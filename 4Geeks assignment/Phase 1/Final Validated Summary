@@ -1,0 +1,56 @@
+# Phase 1 — Validated Project Summary
+
+## Purpose of the application
+A financial monitoring dashboard intended to give a business an
+at-a-glance view of income, spending, and profitability — with backend
+support (unused, see below) for filtering by date range, category,
+operation type, and B2B vs. B2C segment.
+
+## Current functionality of the application
+- On load, the frontend makes one API call — `GET /api/metrics` — with
+  no query parameters.
+- The backend regenerates a fixed, seeded mock dataset per-request
+  (`generate_mock_movements(seed=42)`) and returns it as a flat list of
+  financial movement records.
+- The frontend runs that raw list through `computeKPIs()` and
+  `computeMonthlyData()` (`financial-utils.ts`) to derive:
+  - Four KPI cards: Total Income, Total Outcome, Profit, Profit Margin
+  - Two charts: Income vs. Outcome (monthly), Profit Margin % (monthly)
+- The only interactivity is hovering a chart point to see a tooltip
+  (month, year, profit margin %). Nothing on the dashboard is
+  clickable, filterable, or sortable.
+
+## Flaws in the codebase (with evidence)
+
+1. **Unused backend capability / dead API surface.** `routes.py`
+   defines 9 endpoints supporting filtering by date, category,
+   operation type, and business type — `/api/metrics/summary`,
+   `/comparison`, `/alerts`, `/categories/top`, `/b2b`, `/b2c`,
+   `/facets`, plus query params on `/api/metrics` itself. `App.tsx`
+   calls exactly one of them, with no parameters. Confirmed via
+   `grep -rn "fetch(" .` in `frontend/src` — one result, total.
+
+2. **Hardcoded label disconnected from real data.** `App.tsx` renders
+   `<DashboardHeader period="2024 - Full Year" />` as a literal string,
+   but the backend generates a rolling 12-month window based on
+   `date.today()`. Visible directly in the running app: the header
+   reads "2024 - Full Year" while the chart x-axes show
+   Aug 2025 → Jun 2026.
+
+3. **Dead code.** `frontend/src/lib/mock-data.ts` (73 lines, a
+   hand-written `mockMovements` array) is never imported anywhere.
+   Confirmed by grepping for both the filename and the exported symbol
+   `mockMovements` — the only match is its own declaration.
+
+4. **Unpinned, unseparated dependencies.** `backend/requirements.txt`
+   lists `fastapi`, `uvicorn[standard]`, `debugpy`, `pytest`,
+   `pytest-cov`, `httpx` with no version numbers, and mixes a dev-only
+   debugger (`debugpy`) in with runtime dependencies with no
+   separation.
+
+5. **No UI component test coverage.** Test files exist for
+   `financial-utils.ts` (frontend) and the route logic (backend), but
+   none of the five dashboard components (`kpi-card`, `kpi-row`,
+   `dashboard-header`, `income-outcome-chart`, `profit-percent-chart`)
+   have tests. Confirmed via `find components -name "*.test.*"`
+   returning empty.

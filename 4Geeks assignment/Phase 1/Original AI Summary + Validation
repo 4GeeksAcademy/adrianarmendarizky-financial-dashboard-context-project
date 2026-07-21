@@ -1,0 +1,58 @@
+# Original AI-Generated Project Summary (Unvalidated Draft)
+
+**What it is:** A financial monitoring dashboard that shows income/outcome KPIs,
+a monthly income-vs-outcome chart, and a profit-percentage trend chart for a
+business, with filtering by B2B/B2C segment.
+
+## Architecture
+- **Frontend** (`frontend/`): React 19 + TypeScript, built with Vite, styled
+  with Tailwind v4 + a shadcn-style component system, charts via `recharts`.
+- **Backend** (`backend/`): FastAPI, single router file, no database — all
+  data is procedurally generated mock data.
+- Frontend and backend run as separate Docker services (`docker-compose.yml`),
+  frontend on 5173, backend on 8000, talking over `/api` via Vite's dev proxy.
+
+## Data flow (as initially understood)
+`App.tsx` fetches `GET /api/metrics` on mount, then runs the response through
+`computeKPIs()` and `computeMonthlyData()` to derive the KPI row and chart
+data client-side. Every endpoint in `routes.py` independently calls
+`generate_mock_movements(seed=42)` — there's no real persistence layer.
+
+## Backend API surface
+`/health`, `/api/metrics`, `/api/metrics/facets`, `/api/metrics/summary`,
+`/api/metrics/categories/top`, `/api/metrics/comparison`, `/api/metrics/alerts`,
+`/api/metrics/b2b`, `/api/metrics/b2c`.
+
+## Testing
+Both sides have test coverage — `backend/tests/test_routes.py` and
+`frontend/src/lib/financial-utils.test.ts` — but only `financial-utils.ts`
+is tested on the frontend.
+
+## Flagged for verification (unconfirmed at draft time)
+- `frontend/src/lib/mock-data.ts` appears unused — needs confirming.
+- `backend/requirements.txt` has no version pins.
+- `debugpy` sits alongside production dependencies with no dev/prod split.
+
+
+
+
+# Validation Steps
+
+- Ran the app locally (`docker compose up --build`) and inspected the
+  Network tab to confirm the dashboard is driven by a live call to
+  `GET /api/metrics`, not static data.
+- Ran `grep -rn "mockMovements" .` in `frontend/src` — confirmed
+  `mock-data.ts` is unused (only match is its own declaration).
+- Read `backend/app/routes.py` in full — confirmed 9 endpoints and
+  filtering logic exist but assessed real usage separately (below).
+- Read `backend/requirements.txt` — confirmed no version pins and no
+  dev/runtime dependency separation (`debugpy` alongside `fastapi`).
+- Ran `find components -name "*.test.*"` in `frontend/src` — confirmed
+  zero test files for the five dashboard components.
+- Ran `grep -rn "fetch(" .` in `frontend/src` — confirmed only one
+  network call exists (`/api/metrics`, no query params), meaning 8 of
+  9 backend endpoints and all filter/sort params are unused.
+- Manually tested the dashboard UI — confirmed no filtering, sorting,
+  or clickable elements exist; only chart tooltips on hover.
+- Compared the rendered header ("2024 - Full Year") against the chart
+  x-axis range (Aug 2025 – Jun 2026) — confirmed a mismatch.
