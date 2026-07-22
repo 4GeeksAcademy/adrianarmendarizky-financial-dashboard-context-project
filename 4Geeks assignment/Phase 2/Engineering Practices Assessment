@@ -1,0 +1,109 @@
+# Phase 2 — Engineering Practice Analysis
+
+Findings below are grouped by category, with the specific evidence I
+found in the codebase for each one.
+
+## Architecture & API Design
+
+✅ **Good — Business logic is written as pure functions.**
+`computeKPIs()` and `computeMonthlyData()` in `financial-utils.ts` just
+take data in and return data out — no fetching, no rendering, no
+side effects. That's what makes them easy to unit test (there's a
+`financial-utils.test.ts` for exactly that reason), unlike the visual
+components, which have no tests at all.
+
+⚠️ **Risky — Most of the backend's capability is unused.**
+`routes.py` defines 9 endpoints with filtering by date, category,
+operation type, and business type. The frontend only calls one of
+them — `/api/metrics`, with no query params at all. Confirmed with
+`grep -rn "fetch(" .` in `frontend/src`: one match, total. That's a
+lot of backend logic that looks functional but has never actually been
+exercised by the app.
+
+## Data Contracts & Type Safety
+
+✅ **Good — Inputs are constrained with `Literal` types instead of plain strings.**
+`OperationType`, `Category`, `BusinessType`, and `GroupBy` (`routes.py`,
+lines 11–14) are all typed as fixed sets of allowed values. FastAPI
+validates these automatically before the request even reaches business
+logic — bad input gets rejected at the door instead of causing a bug
+somewhere downstream.
+
+✅ **Good — Both sides of the API define the data shape independently, and they match.**
+`FinancialMovement` exists as a TypeScript interface in
+`financial-types.ts` and as a Pydantic model in `routes.py`. Both are
+used correctly on their own side.
+
+⚠️ **Risky — But nothing enforces that those two definitions stay matched.**
+They're maintained by hand, in two different languages, with no shared
+source of truth and no check that catches drift. If someone updates
+one side and forgets the other, nothing will flag it — it'll just be
+wrong.
+
+## Testing
+
+⚠️ **Risky — Business logic is tested; the UI isn't.**
+`financial-utils.test.ts` and `backend/tests/test_routes.py` both
+exist and cover real logic, but none of the five dashboard components
+(`kpi-card`, `kpi-row`, `dashboard-header`, `income-outcome-chart`,
+`profit-percent-chart`) have any test coverage. Confirmed with
+`find components -name "*.test.*"` — no results. The part of the app
+users actually interact with is the least protected part.
+
+## Dependency Management & Developer Experience
+
+✅ **Good — The dev environment supports attaching a live debugger.**
+`docker-compose.yml` exposes port 5678 alongside the API port, and
+`debugpy` is installed, so a developer can attach a debugger to the
+backend while it's running in the container. That's a real convenience
+for local development.
+
+⚠️ **Risky — But dev and runtime dependencies aren't separated at all.**
+`requirements.txt` lists `fastapi`, `uvicorn`, `debugpy`, `pytest`, and
+others in one flat list, with no version pins. This is really the same
+issue as the debugger above, from the other angle: the debugging setup
+itself is fine, but there's no boundary anywhere between "needed to
+run this" and "only needed while developing."
+
+## Security & Configuration
+
+✅ **Good — CORS is configured deliberately, not left to defaults.**
+`main.py` sets `CORSMiddleware` explicitly rather than skipping it,
+which at least means it was a conscious decision, not an oversight.
+
+⚠️ **Risky — But it's configured wide open.**
+`allow_origins=["*"]` means any origin can call this API from a
+browser — combined with `allow_credentials=True`, which is a
+combination generally flagged as unsafe once credentials are in play.
+Not a problem for a local class project, but exactly the kind of
+setting that needs tightening before this ever left `localhost`.
+
+## Code Hygiene & Correctness
+
+⚠️ **Risky — Dead code left in the repo.**
+`frontend/src/lib/mock-data.ts` (73 lines, a `mockMovements` array) is
+never imported anywhere. Confirmed by grepping for both the filename
+and the exported symbol — the only match is its own declaration.
+
+⚠️ **Risky — A hardcoded label that doesn't match the real data.**
+`App.tsx` renders the header as the literal string `"2024 - Full Year"`,
+but the backend generates a rolling 12-month window based on the
+current date. Running the app makes this obvious: the header says
+"2024," the charts show Aug 2025 → Jun 2026. This one only showed up
+by actually running the app — reading the code alone wouldn't have
+caught it.
+
+---
+
+## Summary
+
+- **5 good practices** found, spanning API design, type safety, and
+  developer tooling.
+- **6 risky practices** found (one over the minimum), spanning
+  architecture, type safety, testing, dependency management, security,
+  and correctness.
+- Two risky findings (dependency separation, the CORS wildcard) and
+  one good finding (the matched-but-unenforced type contracts) point
+  to the same underlying gap: there's no clear boundary anywhere in
+  this repo between "fine for local dev" and "should be locked down."
+  That's the clearest candidate for an actual rule in Phase 3.
