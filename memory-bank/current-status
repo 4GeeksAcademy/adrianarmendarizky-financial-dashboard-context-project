@@ -1,0 +1,37 @@
+# Current Status
+
+## Implemented and working
+- Dashboard loads, fetches live data from `GET /api/metrics`, and
+  renders KPI cards + two charts correctly
+- Backend and frontend both have real test coverage for their
+  business/calculation logic (not UI)
+- `.agents/rules/` established with 8 rules covering architecture,
+  type safety, testing, environment config, and code hygiene —
+  derived from and validated against real code evidence
+
+## Known gaps
+- **Unused backend capability:** 8 of 9 backend routes, and all
+  filter/sort query params on `/api/metrics` itself, are built but
+  never called by the frontend
+- **Data/label mismatch:** dashboard header hardcodes "2024 - Full
+  Year," which doesn't match the actual rolling 12-month data range
+  shown in the charts
+- **Dead code:** `frontend/src/lib/mock-data.ts` is unused and unreferenced
+- **Dependency hygiene:** backend dependencies are unpinned and mix
+  dev-only tools with runtime deps
+- **Test coverage gap:** none of the 5 dashboard UI components have
+  tests, only the underlying business logic does
+- **Type contract drift risk:** frontend and backend data shapes are
+  manually duplicated with no enforcement keeping them in sync
+- **CORS configuration:** `allow_origins=["*"]` combined with
+  `allow_credentials=True` — fine for local dev, not safe as-is beyond
+  that
+
+## Next priorities (suggested, not yet actioned)
+1. Fix the header label bug (quick win, user-visible)
+2. Wire at least one existing backend filter (e.g. date range) into
+   the UI, since the capability already exists
+3. Remove `mock-data.ts`
+4. Pin and split `requirements.txt`
+5. Add tests for the 5 dashboard components
+6. Revisit CORS config before any deployment beyond localhost

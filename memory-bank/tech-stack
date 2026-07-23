@@ -1,0 +1,29 @@
+# Tech Stack
+
+## Frontend
+- React 19 + TypeScript, built with Vite
+- Styling: Tailwind CSS v4 + a shadcn-style component system
+  (`components.json`, `class-variance-authority`, `tailwind-merge`)
+- Charts: `recharts`
+- Testing: `vitest` (business logic only — see `current-status.md`)
+
+## Backend
+- FastAPI (Python)
+- Data validation/modeling: Pydantic (`BaseModel`, `Literal` types)
+- No database — data is generated in-memory per request
+  (`generate_mock_movements`, seeded for consistency)
+- Testing: `pytest` + FastAPI's `TestClient`
+
+## Infrastructure / Tooling
+- Docker Compose orchestrates two services: `frontend` (port 5173)
+  and `backend` (port 8000, plus 5678 for remote debugging via
+  `debugpy`)
+- Frontend calls the backend via `VITE_API_BASE_URL` (falls back to
+  same-origin if unset)
+
+## Key dependencies worth knowing
+- `backend/requirements.txt` is currently unpinned and doesn't
+  separate dev tools from runtime deps (`fastapi`, `debugpy`, `pytest`
+  all listed together) — flagged in `.agents/rules/environment-boundary.md`
+- Frontend dependency versions are pinned normally via
+  `package-lock.json`, unlike the backend

@@ -1,0 +1,29 @@
+# Product Overview — Financial Metrics Dashboard
+
+## What it is
+A financial monitoring dashboard giving an at-a-glance view of a
+business's income, spending, and profitability over time.
+
+## Who it's for
+Someone checking business financial health at a glance — a business
+owner, finance lead, or similar — not someone doing deep transaction-
+level analysis. The current UI supports viewing only, not drilling in.
+
+## Core features (as currently implemented)
+- Four top-level KPI cards: Total Income, Total Outcome, Profit,
+  Profit Margin
+- Two monthly trend charts: Income vs. Outcome, and Profit Margin %
+- Hover tooltips on chart data points (month, year, value)
+
+## What it does NOT currently do
+Despite backend support existing for all of the below, none of it is
+exposed in the UI (see `current-status.md` for details):
+- No filtering by date range, category, operation type, or B2B/B2C
+- No sorting or drill-down into individual transactions
+- No comparison between time periods, even though the backend has a
+  dedicated `/api/metrics/comparison` endpoint for exactly this
+
+## Data
+All data is procedurally generated mock data (seeded, so it's
+consistent across requests), not real financial records. There is no
+database or persistence layer.
