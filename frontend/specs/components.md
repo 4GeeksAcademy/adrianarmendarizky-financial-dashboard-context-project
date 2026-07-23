@@ -15,6 +15,13 @@ dashboard (one instance, not one per feature) — Feature 2's table must
 respect the same filter, per the challenge spec. Feature 3 uses a
 **separate instance** on its own page, with independent state.
 
+**Layout:** two date inputs ("Start date", "End date") rendered side
+by side in a single row, positioned above the existing KPI cards. The
+available-range reference text (e.g. *"Data available: 2025-07-01 to
+2026-06-30"*) renders directly beneath the two inputs, spanning both —
+not next to just one of them, since it describes the dataset as a
+whole, not either individual field.
+
 **Props:**
 | Prop | Type | Notes |
 |---|---|---|
@@ -27,17 +34,15 @@ respect the same filter, per the challenge spec. Feature 3 uses a
 - Both inputs empty → no filter is applied anywhere consuming this
   component; all available data is shown (no `start_date`/`end_date`
   sent to the API).
-- **Only one input filled** (explicitly specified, per evaluation
-  requirement): only that bound is sent to the API — the other stays
-  unset, not defaulted to today's date or the dataset boundary. This
-  matches the backend's own filtering logic (`filter_movements_by_date`
-  applies each bound independently, only if present). Example: only
-  `start_date` set → shows everything from that date to the most
-  recent available data.
+- **Only one input filled** (explicitly specified): only that bound is
+  sent to the API — the other stays unset, not defaulted to today's
+  date or the dataset boundary. This matches the backend's own
+  filtering logic (`filter_movements_by_date` applies each bound
+  independently, only if present). Example: only `start_date` set →
+  shows everything from that date to the most recent available data.
 - `availableRange === null` (facets still loading): the two date
   inputs still render and remain interactive; the reference text
-  (e.g. "Data available: ...") shows a loading placeholder instead of
-  a date range.
+  shows a loading placeholder instead of a date range.
 - Once `availableRange` resolves: reference text shows
   `availableRange.min_date` – `availableRange.max_date`, formatted for
   display (raw values are `YYYY-MM-DD` strings).
@@ -63,11 +68,12 @@ New component. Numeric input controlling spike sensitivity.
 | `min` | `number` | `0.01` — UI-level bound; the API itself only enforces `>= 0`. |
 | `max` | `number` | `1.0` — UI-level bound; not enforced by the API. |
 
-**Conditional rendering:**
-- Values outside `0.01`–`1.0` are rejected/clamped at this component's
-  level before a request is ever made — the API would otherwise
-  silently accept them and likely just return an empty or unexpected
-  alert list rather than an error.
+**Conditional rendering — out-of-range values (explicitly specified):**
+On blur/change, a value below `0.01` is **clamped up to `0.01`**; a
+value above `1.0` is **clamped down to `1.0`**. The component never
+calls `onChange` with an out-of-range value, and no request is ever
+sent to the API with an out-of-range `threshold` — clamping happens
+before the value leaves this component, not after a failed request.
 
 ### `AnomalyAlertsTable`
 New component. Renders below the existing charts.
@@ -80,24 +86,26 @@ New component. Renders below the existing charts.
 | `threshold` | `number` | The threshold value the current `alerts` reflect — needed for the empty-state message. |
 | `dateRange` | `{ start_date?: string; end_date?: string }` | The active range from the shared `DateRangeFilterBar`, for the empty-state message. |
 
+**Columns (explicitly specified):**
+| Column | Source field | Data type | Display format |
+|---|---|---|---|
+| Period | `period` | `string` | As returned, e.g. `"2025-12"` |
+| Recorded Outcome | `outcome_total` | `number` | Currency, e.g. `"$103,378.98"` |
+| Baseline Average | `baseline_average` | `number` | Currency, labeled to reflect a cumulative average — not "last 3 periods" |
+| Spike Increase | `increase_ratio` | `number` | Percentage, e.g. `0.6082` → `"60.82%"` |
+
 **Conditional rendering:**
 - `isLoading === true` → show a loading indicator in place of the table body.
-- **`alerts.length === 0`** (explicitly specified, per evaluation
-  requirement): the table does **not** disappear. Render the table
-  header (Period / Recorded Outcome / Rolling Baseline / Spike
-  Increase) with an explicit empty-state row/message beneath it, e.g.
-  *"No anomalies detected at the current threshold ({threshold})"* —
-  appended with *"within the selected date range"* if `dateRange` has
-  either bound set.
-- `alerts.length > 0` → render one row per `AlertEntry`: `period`,
-  `outcome_total` (currency-formatted), `baseline_average`
-  (currency-formatted, labeled as a running average, not "last 3
-  periods"), `increase_ratio` (formatted as a percentage, e.g. `0.6082`
-  → `"60.82%"`).
+- **`alerts.length === 0`** (explicitly specified): the table does
+  **not** disappear. Render the table header with an explicit
+  empty-state message beneath it, e.g. *"No anomalies detected at the
+  current threshold ({threshold})"* — appended with *"within the
+  selected date range"* if `dateRange` has either bound set.
+- `alerts.length > 0` → render one row per `AlertEntry`, formatted per
+  the columns table above.
 - Edge case: if the active date range's first period has no prior
-  data to compare against, it will never appear as a row — this is
-  expected backend behavior (see `README.md`), not a bug to design
-  around.
+  data to compare against, it will never appear as a row — expected
+  backend behavior (see `README.md`), not a bug to design around.
 
 ---
 
@@ -124,23 +132,30 @@ New component. Rendered **twice** — once per business type.
 
 **Conditional rendering:**
 - `isLoading === true` → loading indicator in place of the table.
-- **`categories.length === 0`** (explicitly specified, per evaluation
-  requirement, independently for each panel): render an explicit
-  empty-state message scoped to that business type, e.g. *"No income
-  recorded for B2C in the selected date range."* — not a blank table,
-  and not the other panel's data.
+- **`categories.length === 0`** (explicitly specified, independently
+  for each panel): render an explicit empty-state message scoped to
+  that business type, e.g. *"No income recorded for B2C in the
+  selected date range."* — not a blank table, and not the other
+  panel's data.
 - `categories.length > 0` → render one row per `CategoryEntry`:
   `category`, `total_amount` (currency-formatted), and a **percentage
-  of group total** column. That percentage is not part of the API
-  response — it must be computed client-side as
-  `entry.total_amount / sum(all entries in this panel's total_amount)`.
-  This computation should be written as a pure function (no side
-  effects), consistent with the existing `financial-utils.ts` pattern
-  and the `business-logic-purity` rule from Phase 3 — so it can be
-  unit tested the same way `computeKPIs` is.
+  of group total** column, computed client-side as `entry.total_amount
+  / sum(all entries in this panel's total_amount)`. Written as a pure
+  function, consistent with `financial-utils.ts` and the
+  `business-logic-purity` rule from Phase 3.
 
 ### `IncomeComparisonChart`
 New component. Renders below both panels.
+
+**What it displays:** a two-bar comparison chart (same charting
+library — `recharts` — as the existing `income-outcome-chart` and
+`profit-percent-chart`, for visual consistency). It has exactly two
+data points: one bar for `b2bTotal`, one for `b2cTotal`. Each bar
+represents that business line's **aggregate total income** for the
+active date range — the sum of all category totals from that panel's
+table above it. This chart shows the B2B-vs-B2C total only; it does
+not break either bar down by category — that detail is already shown
+in the two panels above it.
 
 **Props:**
 | Prop | Type | Notes |
@@ -151,9 +166,8 @@ New component. Renders below both panels.
 
 **Conditional rendering:**
 - `isLoading === true` → loading indicator.
-- `b2bTotal === 0 && b2cTotal === 0` → explicit empty-state message
-  instead of rendering an empty/misleading chart, e.g. *"No income
-  data available for the selected date range."*
+- `b2bTotal === 0 && b2cTotal === 0` → explicit empty-state message,
+  e.g. *"No income data available for the selected date range."*
 - Otherwise → render the two-value visual comparison. A single group
-  having `0` while the other doesn't is a valid, renderable state (not
-  an empty state) — the chart should show that contrast, not hide it.
+  having `0` while the other doesn't is a valid, renderable state —
+  the chart should show that contrast, not hide it.
