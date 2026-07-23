@@ -1,0 +1,22 @@
+# Rule: Component Test Coverage
+
+**Scope:** React components in `frontend/src/components/dashboard/`
+(`kpi-card`, `kpi-row`, `dashboard-header`, `income-outcome-chart`,
+`profit-percent-chart`).
+
+**Rule:** Every new or modified dashboard component must ship with at
+least one test verifying it renders correctly given representative
+props, including loading and/or empty-data states where applicable.
+
+**Rationale:** None of the five existing dashboard components have any
+test coverage (confirmed via `find components -name "*.test.*"`
+returning empty), while the business logic feeding them is tested.
+The layer users actually see is currently the least protected part of
+the app.
+
+**Compliant example:** A change to `profit-percent-chart.tsx` ships
+alongside a new `profit-percent-chart.test.tsx` asserting it renders
+the correct number of data points.
+
+**Non-compliant example:** `kpi-card.tsx` is modified to change how
+profit margin displays, with no accompanying test change.

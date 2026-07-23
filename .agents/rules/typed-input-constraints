@@ -1,0 +1,22 @@
+# Rule: Typed Input Constraints
+
+**Scope:** Any new backend query parameter or Pydantic model field in
+`routes.py` representing a fixed, known set of values.
+
+**Rule:** Represent such fields with `Literal` (or `Enum`) types, not
+plain `str`. Reuse the existing type aliases (`OperationType`,
+`Category`, `BusinessType`, `GroupBy`) instead of duplicating a new one
+for the same concept.
+
+**Rationale:** The existing `Literal` types (lines 11–14) give
+automatic request validation — invalid values are rejected with a 422
+before business logic runs — and self-document in the `/docs` page.
+This rule preserves that pattern rather than letting it regress.
+
+**Compliant example:** A new "channel" filter is added as
+`Channel = Literal["online", "in_store"]` and reused across every
+endpoint that needs it.
+
+**Non-compliant example:** A new endpoint accepts
+`category: str = Query(default=None)` instead of reusing the existing
+`Category` literal.

@@ -69,6 +69,28 @@ def test_b2c_endpoint_only_returns_b2c_records():
     assert payload == sorted(payload, key=lambda item: item["create_date"])
 
 
+def test_b2c_top_spenders_endpoint_returns_b2c_outcome_categories():
+    response = client.get(
+        "/api/metrics/b2c/categories/top-spenders",
+        params={"limit": 3},
+    )
+    comparison_response = client.get(
+        "/api/metrics/categories/top",
+        params={"operation_type": "outcome", "business_type": "B2C", "limit": 3},
+    )
+
+    assert response.status_code == 200
+    assert comparison_response.status_code == 200
+
+    payload = response.json()
+    comparison_payload = comparison_response.json()
+
+    assert len(payload) == 3
+    assert payload == comparison_payload
+    assert all(item["operation_type"] == "outcome" for item in payload)
+    assert payload[0]["total_amount"] >= payload[1]["total_amount"]
+
+
 def test_metrics_endpoint_filters_by_category():
     response = client.get("/api/metrics", params={"category": "sales"})
 

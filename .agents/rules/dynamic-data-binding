@@ -1,0 +1,20 @@
+# Rule: Dynamic Data Binding
+
+**Scope:** Any UI text describing a data range, total, or other value
+derived from fetched data.
+
+**Rule:** Such text must be computed from the fetched data (or its
+metadata) at render time — never hardcoded as a literal string.
+
+**Rationale:** `DashboardHeader` is passed `period="2024 - Full Year"`
+as a hardcoded string, but the backend generates a rolling 12-month
+window from `date.today()`. This was invisible from reading the code
+alone and only surfaced by running the app — the chart x-axis showed
+Aug 2025 → Jun 2026 against a "2024" header.
+
+**Compliant example:** The header period is derived from the min/max
+`create_date` in the fetched movements (the existing
+`/api/metrics/facets` endpoint already returns this).
+
+**Non-compliant example:** Current state —
+`<DashboardHeader period="2024 - Full Year" />`.

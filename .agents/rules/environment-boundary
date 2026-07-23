@@ -1,0 +1,30 @@
+# Rule: Environment Boundary
+
+**Scope:** CORS configuration (`main.py`), dependency listing
+(`requirements.txt`), and debug-only tooling/ports (`docker-compose.yml`).
+
+**Rule:**
+- Dev-only dependencies (`debugpy`, `pytest`, `pytest-cov`, `httpx`)
+  must be separated from runtime dependencies (e.g. a
+  `requirements-dev.txt`), and all dependencies must have version
+  pins.
+- `allow_origins=["*"]` must not be combined with
+  `allow_credentials=True`. Either restrict origins to specific dev
+  URLs or drop credential support.
+- Any exposed debug port must be documented as dev-only via a comment
+  in `docker-compose.yml`.
+
+**Rationale:** Phase 2 identified three separate findings — unpinned
+mixed dependencies, wildcard CORS with credentials enabled, and an
+undocumented debug port — that all trace back to one missing thing:
+no boundary anywhere in this repo between "fine for local dev" and
+"needs lockdown before anything real." This rule closes that gap
+while preserving the genuinely useful parts (explicit CORS config,
+debugger support).
+
+**Compliant example:** `requirements.txt` is pinned and split from a
+`requirements-dev.txt`; `main.py` restricts `allow_origins` to known
+dev URLs.
+
+**Non-compliant example:** Current repo state — one unpinned
+`requirements.txt`, `allow_origins=["*"]` with `allow_credentials=True`.

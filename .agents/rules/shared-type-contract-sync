@@ -1,0 +1,22 @@
+# Rule: Shared Type Contract Sync
+
+**Scope:** Any change to a response model shared between
+`backend/app/routes.py` (Pydantic) and `frontend/src/lib/financial-types.ts`
+(TypeScript) — starting with `FinancialMovement`.
+
+**Rule:** Any change to a shared model's fields must update both the
+Pydantic model and the TypeScript interface in the same commit. If
+they're intentionally out of sync during a staged migration, the
+commit message must say so explicitly.
+
+**Rationale:** `FinancialMovement` is currently hand-duplicated in two
+languages and happens to match today, but nothing enforces that going
+forward — confirmed in Phase 2, no codegen or shared schema exists.
+
+**Compliant example:** A commit adds `notes: str | None` to the
+Pydantic model AND `notes?: string` to the TypeScript interface,
+together.
+
+**Non-compliant example:** A field is renamed on the backend only; the
+frontend interface still references the old name, silently breaking
+data mapping with no error.

@@ -1,0 +1,21 @@
+# Rule: No Orphaned Code
+
+**Scope:** Any file or exported symbol in `frontend/src` or `backend/app` excluding test files.
+
+**Rule:** A file or exported symbol with zero references elsewhere in
+the codebase must be deleted, or — if intentionally kept for near-term
+use — flagged with a comment stating why and when it will be used
+(same pattern as reserved-endpoint comments in
+`api-endpoint-consumption.md`).
+
+**Rationale:** `mock-data.ts` (73 lines, `mockMovements`) is entirely
+unreferenced — confirmed by grepping both the filename and the
+exported symbol — with no comment explaining its presence.
+
+**Compliant example:** A helper file that's no longer used by the UI
+is deleted, or kept with a comment: `// Kept temporarily for X, remove
+by Y.`
+
+**Non-compliant example:** `mock-data.ts`'s current state — unused, no
+comment, indistinguishable from something someone might restore
+believing it's live.
